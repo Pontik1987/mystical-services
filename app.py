@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from models import db, User, Post, Like, Comment, Follow, Bookmark, Notification, Message, Repost, Poll, PollOption, PollVote, Block, Report, PinnedChat, GroupChat, GroupMember, GroupMessage, Story, StoryView, Clip, ClipLike, ClipComment, Donation, Service
+from models import db, User, Post, Like, Comment, Follow, Bookmark, Notification, Message, Repost, Poll, PollOption, PollVote, Block, Report, PinnedChat, GroupChat, GroupMember, GroupMessage, Story, StoryView, Clip, ClipLike, ClipComment, Donation, Service, Booking
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from markupsafe import Markup, escape
@@ -2310,6 +2310,112 @@ def delete_service(service_id):
     db.session.commit()
 
     flash('Услуга удалена')
+    return redirect(url_for('profile', username=session['username']))
+
+
+@app.route('/book/<int:service_id>', methods=['GET', 'POST'])
+def book_service(service_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    service = Service.query.get_or_404(service_id)
+    master = service.user
+
+    if master.id == session['user_id']:
+        flash('Нельзя записаться к самому себе')
+        return redirect(url_for('profile', username=master.username))
+
+    if request.method == 'POST':
+        date = request.form.get('date', '').strip()
+        time = request.form.get('time', '').strip()
+        comment = request.form.get('comment', '').strip()
+
+        if not date or not time:
+            flash('Выбери дату и время')
+            return redirect(url_for('book_service', service_id=service.id))
+
+        booking = Booking(
+            client_id=session['user_id'],
+            master_id=master.id,
+            service_id=service.id,
+            date=date[:20],
+            time=time[:10],
+            comment=comment[:500] if comment else None
+        )
+        db.session.add(booking)
+
+        # Уведомление мастеру
+        notif = Notification(
+            user_id=master.id,
+            actor_id=session['user_id'],
+            type='booking'
+        )
+        db.session.add(notif)
+        db.session.commit()
+
+        flash(f'Заявка отправлена мастеру {master.username}!')
+        return redirect(url_for('profile', username=master.username))
+
+    # Дата по умолчанию — завтра
+    from datetime import datetime as dt_module
+    tomorrow = (dt_module.utcnow() + timedelta(days=1)).strftime('%Y-%m-%d')
+
+    return render_template('book_service.html', service=service, master=master, tomorrow=tomorrow)
+
+
+@app.route('/booking/<int:booking_id>/confirm', methods=['POST'])
+def confirm_booking(booking_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    booking = Booking.query.get_or_404(booking_id)
+
+    if booking.master_id != session['user_id']:
+        flash('Это не твоя заявка')
+        return redirect(url_for('profile', username=session['username']))
+
+    booking.status = 'confirmed'
+    db.session.commit()
+
+    # Уведомление клиенту
+    notif = Notification(
+        user_id=booking.client_id,
+        actor_id=session['user_id'],
+        type='booking_confirmed'
+    )
+    db.session.add(notif)
+    db.session.commit()
+
+    flash('Заявка подтверждена')
+    return redirect(url_for('profile', username=session['username']))
+
+
+@app.route('/booking/<int:booking_id>/cancel', methods=['POST'])
+def cancel_booking(booking_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    booking = Booking.query.get_or_404(booking_id)
+
+    # Отменить может мастер или клиент
+    if booking.master_id != session['user_id'] and booking.client_id != session['user_id']:
+        flash('Это не твоя заявка')
+        return redirect(url_for('index'))
+
+    booking.status = 'cancelled'
+    db.session.commit()
+
+    # Уведомление второй стороне
+    notify_user = booking.client_id if booking.master_id == session['user_id'] else booking.master_id
+    notif = Notification(
+        user_id=notify_user,
+        actor_id=session['user_id'],
+        type='booking_cancelled'
+    )
+    db.session.add(notif)
+    db.session.commit()
+
+    flash('Заявка отменена')
     return redirect(url_for('profile', username=session['username']))
 
 

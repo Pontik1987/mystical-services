@@ -349,3 +349,18 @@ class Service(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='services')
+
+class Booking(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    master_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    service_id = db.Column(db.Integer, db.ForeignKey('service.id'), nullable=False)
+    date = db.Column(db.String(20), nullable=False)
+    time = db.Column(db.String(10), nullable=False)
+    comment = db.Column(db.String(500), nullable=True)
+    status = db.Column(db.String(20), default='pending')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    client = db.relationship('User', foreign_keys=[client_id], backref='bookings_made')
+    master = db.relationship('User', foreign_keys=[master_id], backref='bookings_received')
+    service = db.relationship('Service', backref='bookings')

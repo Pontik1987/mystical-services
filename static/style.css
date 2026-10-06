@@ -3946,3 +3946,103 @@ body.dark .service-edit-btn:hover,
 body.dark .service-delete-btn:hover {
     background: #4c1d95;
 }
+
+/* --- Bookings --- */
+.bookings-section {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.bookings-subtitle {
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 8px;
+    margin-top: 8px;
+}
+
+.booking-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 10px;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.booking-pending {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+}
+
+.booking-confirmed {
+    background: #dcfce7;
+    border: 1px solid #86efac;
+}
+
+.booking-info {
+    flex: 1;
+    min-width: 200px;
+}
+
+.booking-main {
+    font-size: 14px;
+    margin-bottom: 4px;
+    color: #333;
+}
+
+.booking-client {
+    color: #7c3aed;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.booking-client:hover { text-decoration: underline; }
+
+.booking-time {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.booking-comment {
+    font-size: 13px;
+    color: #666;
+    font-style: italic;
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 6px;
+    margin-top: 4px;
+}
+
+.booking-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.booking-service-info {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 16px;
+    background: #faf5ff;
+    border: 1px solid #e5defa;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+/* Dark */
+body.dark .bookings-section { background: #242526; }
+body.dark .booking-pending { background: rgba(254, 243, 199, 0.15); border-color: #92400e; }
+body.dark .booking-confirmed { background: rgba(220, 252, 231, 0.15); border-color: #166534; }
+body.dark .booking-main { color: #e4e6eb; }
+body.dark .booking-time { color: #b0b3b8; }
+body.dark .booking-comment { background: rgba(0,0,0,0.3); color: #b0b3b8; }
+body.dark .booking-service-info { background: #2a2340; border-color: #4c1d95; }
