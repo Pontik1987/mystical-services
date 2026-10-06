@@ -15,3 +15,6 @@ static/stories/
 
 # Пользовательские аудио (не храним в Git)
 static/audio/
+
+# Пользовательские загрузки портфолио
+static/portfolio/
