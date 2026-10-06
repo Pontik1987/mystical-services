@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Добавить услугу — Mystical Services</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <a href="{{ url_for('index') }}" class="logo">Mystical Services</a>
+        <div class="user-info">
+            <a href="{{ url_for('profile', username=session.username) }}" class="user-link">← В профиль</a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Тема">🌙</button>
+            <a href="{{ url_for('logout') }}" class="btn-logout">Выйти</a>
+        </div>
+    </header>
+
+    <main class="feed-container">
+        <div class="edit-card">
+            <h2>📄 Новая услуга</h2>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for msg in messages %}
+                        <div class="flash">{{ msg }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST">
+                <label class="form-label">Название услуги *</label>
+                <input type="text" name="name" class="form-input" maxlength="100" required autofocus placeholder="Например: Коррекция бровей">
+
+                <label class="form-label">Категория</label>
+                <select name="category" class="form-input">
+                    <option value="beauty">💅 Бьюти</option>
+                    <option value="auto">🚗 Авто</option>
+                    <option value="home">🏠 Быт</option>
+                    <option value="it">💻 IT</option>
+                    <option value="education">📚 Образование</option>
+                    <option value="creative">🎨 Творчество</option>
+                    <option value="other" selected>📦 Другое</option>
+                </select>
+
+                <label class="form-label">Цена (BYN)</label>
+                <input type="number" name="price" class="form-input" min="0" max="100000" value="0">
+
+                <label class="form-label">Длительность (минут)</label>
+                <input type="number" name="duration" class="form-input" min="15" max="480" value="60">
+
+                <label class="form-label">Описание (необязательно)</label>
+                <textarea name="description" id="service-desc" class="form-textarea" maxlength="500" placeholder="Что входит в услугу?"></textarea>
+                <button type="button" class="emoji-trigger" data-target="service-desc" title="Эмодзи" style="margin-top:6px;">😀 Эмодзи</button>
+
+                <div class="edit-actions">
+                    <button type="submit" class="btn-primary">Добавить услугу</button>
+                    <a href="{{ url_for('profile', username=session.username) }}" class="btn-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='emoji.js') }}"></script>
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</body>
+</html>

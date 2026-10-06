@@ -20,6 +20,7 @@
         </form>
 
         <div class="user-info">
+            <a href="{{ url_for('stories_list') }}" class="user-link" title="Истории">📖</a>
             <a href="{{ url_for('clips') }}" class="user-link" title="Клипы">🎬</a>
             <a href="{{ url_for('stars_history') }}" class="user-link" title="Мои звёзды">⭐{% if current_user %} {{ current_user.stars or 0 }}{% endif %}</a>
             <a href="{{ url_for('bookmarks') }}" class="user-link" title="Избранное">🔖</a>

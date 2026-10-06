@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from models import db, User, Post, Like, Comment, Follow, Bookmark, Notification, Message, Repost, Poll, PollOption, PollVote, Block, Report, PinnedChat, GroupChat, GroupMember, GroupMessage, Story, StoryView, Clip, ClipLike, ClipComment, Donation
+from models import db, User, Post, Like, Comment, Follow, Bookmark, Notification, Message, Repost, Poll, PollOption, PollVote, Block, Report, PinnedChat, GroupChat, GroupMember, GroupMessage, Story, StoryView, Clip, ClipLike, ClipComment, Donation, Service
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from markupsafe import Markup, escape
@@ -2205,6 +2205,112 @@ def ai_analyze():
         )
 
     return {'success': True, 'title': result.get('title'), 'text': result.get('text')}
+
+
+@app.route('/services/add', methods=['GET', 'POST'])
+def add_service():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        category = request.form.get('category', 'other')
+        price = request.form.get('price', 0, type=int)
+        duration = request.form.get('duration', 60, type=int)
+        description = request.form.get('description', '').strip()
+
+        if not name:
+            flash('Введи название услуги')
+            return redirect(url_for('add_service'))
+
+        if len(name) > 100:
+            flash('Название — максимум 100 символов')
+            return redirect(url_for('add_service'))
+
+        allowed_categories = ['beauty', 'auto', 'home', 'it', 'education', 'creative', 'other']
+        if category not in allowed_categories:
+            category = 'other'
+
+        if price < 0:
+            price = 0
+
+        if duration < 15:
+            duration = 15
+        elif duration > 480:
+            duration = 480
+
+        service = Service(
+            name=name,
+            category=category,
+            price=price,
+            duration=duration,
+            description=description[:500] if description else None,
+            user_id=session['user_id']
+        )
+        db.session.add(service)
+        db.session.commit()
+
+        flash(f'Услуга «{name}» добавлена')
+        return redirect(url_for('profile', username=session['username']))
+
+    return render_template('add_service.html')
+
+
+@app.route('/services/<int:service_id>/edit', methods=['GET', 'POST'])
+def edit_service(service_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    service = Service.query.get_or_404(service_id)
+
+    if service.user_id != session['user_id']:
+        flash('Это не твоя услуга')
+        return redirect(url_for('profile', username=session['username']))
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        category = request.form.get('category', 'other')
+        price = request.form.get('price', 0, type=int)
+        duration = request.form.get('duration', 60, type=int)
+        description = request.form.get('description', '').strip()
+
+        if not name:
+            flash('Введи название услуги')
+            return redirect(url_for('edit_service', service_id=service.id))
+
+        allowed_categories = ['beauty', 'auto', 'home', 'it', 'education', 'creative', 'other']
+        if category not in allowed_categories:
+            category = 'other'
+
+        service.name = name[:100]
+        service.category = category
+        service.price = max(0, price)
+        service.duration = max(15, min(480, duration))
+        service.description = description[:500] if description else None
+        db.session.commit()
+
+        flash('Услуга обновлена')
+        return redirect(url_for('profile', username=session['username']))
+
+    return render_template('edit_service.html', service=service)
+
+
+@app.route('/services/<int:service_id>/delete', methods=['POST'])
+def delete_service(service_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    service = Service.query.get_or_404(service_id)
+
+    if service.user_id != session['user_id']:
+        flash('Это не твоя услуга')
+        return redirect(url_for('profile', username=session['username']))
+
+    db.session.delete(service)
+    db.session.commit()
+
+    flash('Услуга удалена')
+    return redirect(url_for('profile', username=session['username']))
 
 
 with app.app_context():

@@ -112,6 +112,60 @@
             {% endif %}
         </div>
 
+        <!-- Секция Услуги -->
+        <div class="services-section">
+            <div class="services-header">
+                <h3 class="section-title">📄 Услуги {% if user.services %}({{ user.services|length }}){% endif %}</h3>
+                {% if user.id == session.user_id %}
+                    <a href="{{ url_for('add_service') }}" class="btn-primary btn-small">+ Добавить услугу</a>
+                {% endif %}
+            </div>
+
+            {% if user.services %}
+                <div class="services-list">
+                    {% for service in user.services %}
+                        <div class="service-item">
+                            <div class="service-main">
+                                <div class="service-category">
+                                    {% if service.category == 'beauty' %}💅
+                                    {% elif service.category == 'auto' %}🚗
+                                    {% elif service.category == 'home' %}🏠
+                                    {% elif service.category == 'it' %}💻
+                                    {% elif service.category == 'education' %}📚
+                                    {% elif service.category == 'creative' %}🎨
+                                    {% else %}📦{% endif %}
+                                </div>
+                                <div class="service-info">
+                                    <div class="service-name">{{ service.name }}</div>
+                                    {% if service.description %}
+                                        <div class="service-desc">{{ service.description }}</div>
+                                    {% endif %}
+                                    <div class="service-meta">
+                                        ⏱ {{ service.duration }} мин
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="service-actions">
+                                <div class="service-price">{{ service.price }} BYN</div>
+                                {% if user.id == session.user_id %}
+                                    <a href="{{ url_for('edit_service', service_id=service.id) }}" class="service-edit-btn" title="Редактировать">✏️</a>
+                                    <form method="POST" action="{{ url_for('delete_service', service_id=service.id) }}" onsubmit="return confirm('Удалить услугу?');" style="display:inline;">
+                                        <button type="submit" class="service-delete-btn" title="Удалить">🗑</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                {% if user.id == session.user_id %}
+                    <p class="empty">У тебя пока нет услуг. <a href="{{ url_for('add_service') }}">Добавь первую!</a></p>
+                {% else %}
+                    <p class="empty">У этого мастера пока нет услуг.</p>
+                {% endif %}
+            {% endif %}
+        </div>
+
         {% set pinned_posts = posts|selectattr('is_pinned')|list %}
         {% set normal_posts = posts|rejectattr('is_pinned')|list %}
 

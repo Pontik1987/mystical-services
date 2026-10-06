@@ -336,3 +336,16 @@ class Donation(db.Model):
     from_user = db.relationship('User', foreign_keys=[from_user_id], backref='donations_sent')
     to_user = db.relationship('User', foreign_keys=[to_user_id], backref='donations_received')
     post = db.relationship('Post', backref='donations')
+
+class Service(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    category = db.Column(db.String(30), default='other')
+    price = db.Column(db.Integer, default=0)
+    duration = db.Column(db.Integer, default=60)
+    description = db.Column(db.String(500), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='services')

@@ -3796,3 +3796,153 @@ body.dark .ai-result {
     border-color: #4c1d95;
 }
 body.dark .ai-result-text { color: #e4e6eb; }
+
+/* --- Bookmarks --- */
+.bookmark-form { display: inline; }
+
+.bookmark-btn {
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 20px;
+    transition: background 0.2s, opacity 0.2s;
+    opacity: 0.5;
+}
+
+.bookmark-btn:hover {
+    background: #fef3c7;
+    opacity: 1;
+}
+
+.bookmark-btn.active {
+    opacity: 1;
+    background: #fef3c7;
+}
+
+body.dark .bookmark-btn:hover,
+body.dark .bookmark-btn.active {
+    background: rgba(254, 243, 199, 0.15);
+}
+
+/* --- Services --- */
+.services-section {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.services-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.services-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.service-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #faf5ff;
+    border: 1px solid #e5defa;
+    border-radius: 10px;
+    gap: 12px;
+}
+
+.service-main {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    flex: 1;
+    min-width: 0;
+}
+
+.service-category {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.service-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.service-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+    font-size: 15px;
+}
+
+.service-desc {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 4px;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+.service-meta {
+    font-size: 12px;
+    color: #999;
+}
+
+.service-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.service-price {
+    font-weight: 700;
+    color: #7c3aed;
+    font-size: 16px;
+    white-space: nowrap;
+}
+
+.service-edit-btn,
+.service-delete-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background 0.2s;
+    opacity: 0.6;
+}
+
+.service-edit-btn:hover,
+.service-delete-btn:hover {
+    background: #e9d5ff;
+    opacity: 1;
+}
+
+/* Dark */
+body.dark .services-section { background: #242526; }
+body.dark .service-item {
+    background: #2a2340;
+    border-color: #4c1d95;
+}
+body.dark .service-name { color: #e4e6eb; }
+body.dark .service-desc { color: #b0b3b8; }
+body.dark .service-meta { color: #888; }
+body.dark .service-price { color: #a78bfa; }
+body.dark .service-edit-btn:hover,
+body.dark .service-delete-btn:hover {
+    background: #4c1d95;
+}
