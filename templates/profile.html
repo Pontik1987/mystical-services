@@ -112,6 +112,40 @@
             {% endif %}
         </div>
 
+<!-- Секция Портфолио -->
+        <div class="portfolio-section">
+            <div class="portfolio-header">
+                <h3 class="section-title">📸 Портфолио {% if user.portfolio_items %}({{ user.portfolio_items|length }}){% endif %}</h3>
+                {% if user.id == session.user_id %}
+                    <a href="{{ url_for('add_portfolio') }}" class="btn-primary btn-small">+ Добавить работу</a>
+                {% endif %}
+            </div>
+
+            {% if user.portfolio_items %}
+                <div class="portfolio-grid">
+                    {% for item in user.portfolio_items|sort(attribute='created_at', reverse=true) %}
+                        <div class="portfolio-card">
+                            <img src="{{ url_for('static', filename='portfolio/' + item.image) }}" alt="{{ item.title or 'Работа' }}" class="portfolio-img" onclick="openPortfolio({{ loop.index0 }})">
+                            {% if item.title %}
+                                <div class="portfolio-title">{{ item.title }}</div>
+                            {% endif %}
+                            {% if user.id == session.user_id %}
+                                <form method="POST" action="{{ url_for('delete_portfolio', item_id=item.id) }}" onsubmit="return confirm('Удалить работу?');" class="portfolio-delete">
+                                    <button type="submit" title="Удалить">×</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                {% if user.id == session.user_id %}
+                    <p class="empty">У тебя пока нет работ. <a href="{{ url_for('add_portfolio') }}">Добавь первую!</a></p>
+                {% else %}
+                    <p class="empty">Мастер ещё не добавил работы.</p>
+                {% endif %}
+            {% endif %}
+        </div>
+
         <!-- Секция Услуги -->
         <div class="services-section">
             <div class="services-header">

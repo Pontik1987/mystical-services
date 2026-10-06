@@ -364,3 +364,14 @@ class Booking(db.Model):
     client = db.relationship('User', foreign_keys=[client_id], backref='bookings_made')
     master = db.relationship('User', foreign_keys=[master_id], backref='bookings_received')
     service = db.relationship('Service', backref='bookings')
+
+class Portfolio(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    image = db.Column(db.String(200), nullable=False)
+    title = db.Column(db.String(100), nullable=True)
+    description = db.Column(db.String(500), nullable=True)
+    category = db.Column(db.String(30), default='other')
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='portfolio_items')

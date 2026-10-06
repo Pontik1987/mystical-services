@@ -4046,3 +4046,94 @@ body.dark .booking-main { color: #e4e6eb; }
 body.dark .booking-time { color: #b0b3b8; }
 body.dark .booking-comment { background: rgba(0,0,0,0.3); color: #b0b3b8; }
 body.dark .booking-service-info { background: #2a2340; border-color: #4c1d95; }
+
+/* --- Portfolio --- */
+.portfolio-section {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.portfolio-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.portfolio-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+.portfolio-card {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+    background: #f0f0f0;
+    cursor: pointer;
+    transition: transform 0.15s;
+}
+
+.portfolio-card:hover {
+    transform: scale(1.03);
+}
+
+.portfolio-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.portfolio-title {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 6px 10px;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.portfolio-delete {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: none;
+}
+
+.portfolio-card:hover .portfolio-delete {
+    display: block;
+}
+
+.portfolio-delete button {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.portfolio-delete button:hover {
+    background: #dc2626;
+}
+
+/* Dark */
+body.dark .portfolio-section { background: #242526; }
+body.dark .portfolio-card { background: #3a3b3c; }

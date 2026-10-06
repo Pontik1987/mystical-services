@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from models import db, User, Post, Like, Comment, Follow, Bookmark, Notification, Message, Repost, Poll, PollOption, PollVote, Block, Report, PinnedChat, GroupChat, GroupMember, GroupMessage, Story, StoryView, Clip, ClipLike, ClipComment, Donation, Service, Booking
+from models import db, User, Post, Like, Comment, Follow, Bookmark, Notification, Message, Repost, Poll, PollOption, PollVote, Block, Report, PinnedChat, GroupChat, GroupMember, GroupMessage, Story, StoryView, Clip, ClipLike, ClipComment, Donation, Service, Booking, Portfolio
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from markupsafe import Markup, escape
@@ -26,6 +26,8 @@ FILES_FOLDER = os.path.join(basedir, 'static', 'files')
 os.makedirs(FILES_FOLDER, exist_ok=True)
 CLIPS_FOLDER = os.path.join(basedir, 'static', 'clips')
 os.makedirs(CLIPS_FOLDER, exist_ok=True)
+PORTFOLIO_FOLDER = os.path.join(basedir, 'static', 'portfolio')
+os.makedirs(PORTFOLIO_FOLDER, exist_ok=True)
 AUDIO_FOLDER = os.path.join(basedir, 'static', 'audio')
 os.makedirs(AUDIO_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -2416,6 +2418,81 @@ def cancel_booking(booking_id):
     db.session.commit()
 
     flash('Заявка отменена')
+    return redirect(url_for('profile', username=session['username']))
+
+
+@app.route('/portfolio/add', methods=['GET', 'POST'])
+def add_portfolio():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        file = request.files.get('image')
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        category = request.form.get('category', 'other')
+
+        if not file or file.filename == '':
+            flash('Выбери фото')
+            return redirect(url_for('add_portfolio'))
+
+        if not allowed_file(file.filename):
+            flash('Только png, jpg, jpeg, gif, webp')
+            return redirect(url_for('add_portfolio'))
+
+        # Ограничение: 5 МБ
+        file.seek(0, 2)
+        size = file.tell()
+        file.seek(0)
+
+        if size > 5 * 1024 * 1024:
+            flash('Фото — максимум 5 МБ')
+            return redirect(url_for('add_portfolio'))
+
+        allowed_categories = ['beauty', 'auto', 'home', 'it', 'education', 'creative', 'other']
+        if category not in allowed_categories:
+            category = 'other'
+
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        filename = f"work_{session['user_id']}_{int(datetime.utcnow().timestamp())}.{ext}"
+        file.save(os.path.join(PORTFOLIO_FOLDER, filename))
+
+        item = Portfolio(
+            image=filename,
+            title=title[:100] if title else None,
+            description=description[:500] if description else None,
+            category=category,
+            user_id=session['user_id']
+        )
+        db.session.add(item)
+        db.session.commit()
+
+        flash('Работа добавлена в портфолио!')
+        return redirect(url_for('profile', username=session['username']))
+
+    return render_template('add_portfolio.html')
+
+
+@app.route('/portfolio/<int:item_id>/delete', methods=['POST'])
+def delete_portfolio(item_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    item = Portfolio.query.get_or_404(item_id)
+
+    if item.user_id != session['user_id']:
+        flash('Это не твоя работа')
+        return redirect(url_for('profile', username=session['username']))
+
+    # Удаляем файл
+    filepath = os.path.join(PORTFOLIO_FOLDER, item.image)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+
+    db.session.delete(item)
+    db.session.commit()
+
+    flash('Работа удалена')
     return redirect(url_for('profile', username=session['username']))
 
 

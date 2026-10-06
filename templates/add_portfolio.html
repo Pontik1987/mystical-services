@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Добавить работу — Mystical Services</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <a href="{{ url_for('index') }}" class="logo">Mystical Services</a>
+        <div class="user-info">
+            <a href="{{ url_for('profile', username=session.username) }}" class="user-link">← В профиль</a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Тема">🌙</button>
+            <a href="{{ url_for('logout') }}" class="btn-logout">Выйти</a>
+        </div>
+    </header>
+
+    <main class="feed-container">
+        <div class="edit-card">
+            <h2>📸 Новая работа в портфолио</h2>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for msg in messages %}
+                        <div class="flash">{{ msg }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" enctype="multipart/form-data">
+                <label class="form-label">Фото *</label>
+                <input type="file" name="image" class="form-input" accept="image/*" required>
+                <p class="form-hint">Макс 5 МБ, форматы: png, jpg, jpeg, gif, webp</p>
+
+                <label class="form-label">Название (необязательно)</label>
+                <input type="text" name="title" class="form-input" maxlength="100" placeholder="Например: Коррекция бровей">
+
+                <label class="form-label">Категория</label>
+                <select name="category" class="form-input">
+                    <option value="beauty" selected>💅 Бьюти</option>
+                    <option value="auto">🚗 Авто</option>
+                    <option value="home">🏠 Быт</option>
+                    <option value="it">💻 IT</option>
+                    <option value="education">📚 Образование</option>
+                    <option value="creative">🎨 Творчество</option>
+                    <option value="other">📦 Другое</option>
+                </select>
+
+                <label class="form-label">Описание (необязательно)</label>
+                <textarea name="description" id="portfolio-desc" class="form-textarea" maxlength="500" placeholder="Что было сделано?"></textarea>
+                <button type="button" class="emoji-trigger" data-target="portfolio-desc" title="Эмодзи" style="margin-top:6px;">😀 Эмодзи</button>
+
+                <div class="edit-actions">
+                    <button type="submit" class="btn-primary">Добавить работу</button>
+                    <a href="{{ url_for('profile', username=session.username) }}" class="btn-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='emoji.js') }}"></script>
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</body>
+</html>
