@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Оставить отзыв — Mystical Services</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <a href="{{ url_for('index') }}" class="logo">Mystical Services</a>
+        <div class="user-info">
+            <a href="{{ url_for('profile', username=booking.master.username) }}" class="user-link">← К мастеру</a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Тема">🌙</button>
+            <a href="{{ url_for('logout') }}" class="btn-logout">Выйти</a>
+        </div>
+    </header>
+
+    <main class="feed-container">
+        <div class="edit-card">
+            <h2>⭐ Оставить отзыв</h2>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for msg in messages %}
+                        <div class="flash">{{ msg }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="booking-service-info">
+                <div class="service-category" style="font-size:32px;">⭐</div>
+                <div>
+                    <div style="font-weight:700;font-size:16px;color:#7c3aed;">{{ booking.service.name }}</div>
+                    <div style="font-size:13px;color:#666;">Мастер: <a href="{{ url_for('profile', username=booking.master.username) }}" style="color:#7c3aed;">{{ booking.master.username }}</a></div>
+                    <div style="font-size:13px;color:#666;">📅 {{ booking.date }} в {{ booking.time }}</div>
+                </div>
+            </div>
+
+            <form method="POST">
+                <label class="form-label">Оценка *</label>
+                <div class="rating-stars" id="rating-stars">
+                    <input type="radio" name="rating" value="5" id="star5" checked>
+                    <label for="star5" title="5 звёзд">⭐</label>
+                    <input type="radio" name="rating" value="4" id="star4">
+                    <label for="star4" title="4 звезды">⭐</label>
+                    <input type="radio" name="rating" value="3" id="star3">
+                    <label for="star3" title="3 звезды">⭐</label>
+                    <input type="radio" name="rating" value="2" id="star2">
+                    <label for="star2" title="2 звезды">⭐</label>
+                    <input type="radio" name="rating" value="1" id="star1">
+                    <label for="star1" title="1 звезда">⭐</label>
+                </div>
+
+                <label class="form-label">Текст отзыва (необязательно)</label>
+                <textarea name="text" id="review-text" class="form-textarea" maxlength="500" placeholder="Расскажи о работе мастера..."></textarea>
+                <button type="button" class="emoji-trigger" data-target="review-text" title="Эмодзи" style="margin-top:6px;">😀 Эмодзи</button>
+
+                <div class="edit-actions">
+                    <button type="submit" class="btn-primary">⭐ Отправить отзыв</button>
+                    <a href="{{ url_for('profile', username=booking.master.username) }}" class="btn-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='emoji.js') }}"></script>
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</body>
+</html>

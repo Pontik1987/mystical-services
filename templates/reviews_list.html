@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Отзывы о {{ master.username }} — Mystical Services</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <a href="{{ url_for('index') }}" class="logo">Mystical Services</a>
+        <div class="user-info">
+            <a href="{{ url_for('profile', username=master.username) }}" class="user-link">← К профилю</a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Тема">🌙</button>
+            <a href="{{ url_for('logout') }}" class="btn-logout">Выйти</a>
+        </div>
+    </header>
+
+    <main class="feed-container">
+        <div class="tag-header">
+            <h2 class="tag-title">⭐ Отзывы о @{{ master.username }}</h2>
+            {% if reviews %}
+                <div class="avg-rating">
+                    <span class="avg-rating-num">{{ avg }}</span>
+                    <span class="avg-rating-stars">
+                        {% for i in range(avg|round|int) %}⭐{% endfor %}
+                    </span>
+                    <span class="avg-rating-count">({{ reviews|length }} отзывов)</span>
+                </div>
+            {% endif %}
+        </div>
+
+        {% if reviews %}
+            <!-- Распределение оценок -->
+            <div class="rating-distribution">
+                {% for stars in [5, 4, 3, 2, 1] %}
+                    <div class="rating-bar-row">
+                        <span class="rating-bar-label">{{ stars }}⭐</span>
+                        <div class="rating-bar-bg">
+                            {% set pct = (distribution[stars] * 100 / reviews|length)|round|int if reviews else 0 %}
+                            <div class="rating-bar-fill" style="width: {{ pct }}%;"></div>
+                        </div>
+                        <span class="rating-bar-count">{{ distribution[stars] }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Список отзывов -->
+            <div class="reviews-list">
+                {% for r in reviews %}
+                    <div class="review-item">
+                        <div class="review-header">
+                            <a href="{{ url_for('profile', username=r.client.username) }}" class="review-client">
+                                @{{ r.client.username }}
+                            </a>
+                            <div class="review-rating">
+                                {% for i in range(r.rating) %}⭐{% endfor %}
+                            </div>
+                            <div class="review-date">{{ r.created_at.strftime('%d.%m.%Y') }}</div>
+                        </div>
+                        {% if r.text %}
+                            <div class="review-text">{{ r.text }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty">Пока нет отзывов.</p>
+        {% endif %}
+    </main>
+
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</body>
+</html>

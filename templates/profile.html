@@ -146,6 +146,38 @@
             {% endif %}
         </div>
 
+<!-- Секция Отзывы -->
+        {% if user.id != session.user_id and reviews_count(user) > 0 %}
+            <div class="reviews-section">
+                <div class="reviews-header">
+                    <h3 class="section-title">⭐ Отзывы ({{ reviews_count(user) }})</h3>
+                    <a href="{{ url_for('reviews_list', username=user.username) }}" class="btn-secondary btn-small">Все отзывы</a>
+                </div>
+
+                <div class="rating-summary">
+                    <div class="rating-big">
+                        <span class="rating-big-num">{{ avg_rating(user) }}</span>
+                        <span class="rating-big-stars">
+                            {% for i in range(avg_rating(user)|round|int) %}⭐{% endfor %}
+                        </span>
+                    </div>
+                    <div class="rating-text">На основе {{ reviews_count(user) }} отзывов</div>
+                </div>
+
+                {% for r in user.reviews_received[:3] %}
+                    <div class="review-preview">
+                        <div class="review-preview-header">
+                            <a href="{{ url_for('profile', username=r.client.username) }}" class="review-client">@{{ r.client.username }}</a>
+                            <span class="review-rating">{% for i in range(r.rating) %}⭐{% endfor %}</span>
+                        </div>
+                        {% if r.text %}
+                            <div class="review-text">{{ r.text[:150] }}{% if r.text|length > 150 %}...{% endif %}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
         <!-- Секция Услуги -->
         <div class="services-section">
             <div class="services-header">
@@ -203,6 +235,36 @@
             {% endif %}
         </div>
 
+<!-- Секция Мои записи (для клиента) -->
+        {% if user.id == session.user_id and user.bookings_made %}
+            <div class="my-bookings-section">
+                <h3 class="section-title">📅 Мои записи ({{ user.bookings_made|length }})</h3>
+                {% for b in user.bookings_made|sort(attribute='created_at', reverse=true) %}
+                    <div class="booking-item booking-{{ b.status }}">
+                        <div class="booking-info">
+                            <div class="booking-main">
+                                К мастеру <a href="{{ url_for('profile', username=b.master.username) }}" class="booking-client">@{{ b.master.username }}</a>
+                                → <strong>{{ b.service.name }}</strong>
+                            </div>
+                            <div class="booking-time">📅 {{ b.date }} в {{ b.time }}</div>
+                            <div class="booking-status">
+                                {% if b.status == 'pending' %}🟡 Ожидает подтверждения
+                                {% elif b.status == 'confirmed' %}🟢 Подтверждена
+                                {% elif b.status == 'cancelled' %}🔴 Отменена{% endif %}
+                            </div>
+                        </div>
+                        <div class="booking-actions">
+                            {% if b.status == 'confirmed' and not b.review %}
+                                <a href="{{ url_for('leave_review', booking_id=b.id) }}" class="btn-primary btn-small leave-review-btn">⭐ Оставить отзыв</a>
+                            {% elif b.review %}
+                                <span class="review-done">✅ Отзыв оставлен ({{ b.review.rating }}⭐)</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
 <!-- Секция Заявки (только для мастера) -->
         {% if user.id == session.user_id %}
             {% set pending = user.bookings_received|selectattr('status', 'equalto', 'pending')|list %}
@@ -238,6 +300,7 @@
                         {% endfor %}
                     {% endif %}
 
+                    {% set my_confirmed = user.bookings_made|selectattr('status', 'equalto', 'confirmed')|list if user.id == session.user_id else [] %}
                     {% if confirmed %}
                         <div class="bookings-subtitle" style="margin-top:16px;">✅ Подтверждённые ({{ confirmed|length }})</div>
                         {% for b in confirmed %}

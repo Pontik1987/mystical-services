@@ -375,3 +375,16 @@ class Portfolio(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='portfolio_items')
+
+class Review(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    master_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=False, unique=True)
+    rating = db.Column(db.Integer, default=5)
+    text = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    client = db.relationship('User', foreign_keys=[client_id], backref='reviews_made')
+    master = db.relationship('User', foreign_keys=[master_id], backref='reviews_received')
+    booking = db.relationship('Booking', backref='review')

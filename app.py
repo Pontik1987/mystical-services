@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from models import db, User, Post, Like, Comment, Follow, Bookmark, Notification, Message, Repost, Poll, PollOption, PollVote, Block, Report, PinnedChat, GroupChat, GroupMember, GroupMessage, Story, StoryView, Clip, ClipLike, ClipComment, Donation, Service, Booking, Portfolio
+from models import db, User, Post, Like, Comment, Follow, Bookmark, Notification, Message, Repost, Poll, PollOption, PollVote, Block, Report, PinnedChat, GroupChat, GroupMember, GroupMessage, Story, StoryView, Clip, ClipLike, ClipComment, Donation, Service, Booking, Portfolio, Review
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from markupsafe import Markup, escape
@@ -188,6 +188,15 @@ def inject_user():
             following_id=target_user.id
         ).first() is not None
 
+    def avg_rating(user):
+        reviews = user.reviews_received
+        if not reviews:
+            return 0
+        return round(sum(r.rating for r in reviews) / len(reviews), 1)
+
+    def reviews_count(user):
+        return len(user.reviews_received)
+
     def can_message(target_user):
         """Может ли текущий юзер писать target_user."""
         if not current_user or not target_user:
@@ -208,7 +217,8 @@ def inject_user():
                 is_blocked=is_blocked, blocked_ids=blocked_ids,
                 is_admin=is_admin, has_reported_post=has_reported_post,
                 is_chat_pinned=is_chat_pinned, accent_class=accent_class,
-                can_view_profile=can_view_profile, can_message=can_message)
+                can_view_profile=can_view_profile, can_message=can_message,
+                avg_rating=avg_rating, reviews_count=reviews_count)
 
 
 @app.route('/')
@@ -2494,6 +2504,85 @@ def delete_portfolio(item_id):
 
     flash('Работа удалена')
     return redirect(url_for('profile', username=session['username']))
+
+
+@app.route('/review/<int:booking_id>', methods=['GET', 'POST'])
+def leave_review(booking_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    booking = Booking.query.get_or_404(booking_id)
+
+    # Отзыв оставляет клиент, только за подтверждённую запись
+    if booking.client_id != session['user_id']:
+        flash('Отзыв может оставить только клиент')
+        return redirect(url_for('profile', username=session['username']))
+
+    if booking.status != 'confirmed':
+        flash('Отзыв можно оставить только за подтверждённую запись')
+        return redirect(url_for('profile', username=session['username']))
+
+    # Уже есть отзыв?
+    existing = Review.query.filter_by(booking_id=booking.id).first()
+    if existing:
+        flash('Ты уже оставил отзыв за эту запись')
+        return redirect(url_for('profile', username=booking.master.username))
+
+    if request.method == 'POST':
+        rating = request.form.get('rating', 5, type=int)
+        text = request.form.get('text', '').strip()
+
+        rating = max(1, min(5, rating))
+
+        review = Review(
+            client_id=session['user_id'],
+            master_id=booking.master_id,
+            booking_id=booking.id,
+            rating=rating,
+            text=text[:500] if text else None
+        )
+        db.session.add(review)
+
+        # Уведомление мастеру
+        notif = Notification(
+            user_id=booking.master_id,
+            actor_id=session['user_id'],
+            type='review'
+        )
+        db.session.add(notif)
+        db.session.commit()
+
+        flash(f'Спасибо за отзыв! Оценка: {rating}⭐')
+        return redirect(url_for('profile', username=booking.master.username))
+
+    return render_template('leave_review.html', booking=booking)
+
+
+@app.route('/reviews/<username>')
+def reviews_list(username):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.filter_by(username=username.lower()).first()
+    if not user:
+        flash('Юзер не найден')
+        return redirect(url_for('index'))
+
+    reviews = Review.query.filter_by(master_id=user.id).order_by(Review.created_at.desc()).all()
+
+    # Распределение по оценкам
+    distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
+    for r in reviews:
+        if r.rating in distribution:
+            distribution[r.rating] += 1
+
+    avg = round(sum(r.rating for r in reviews) / len(reviews), 1) if reviews else 0
+
+    return render_template('reviews_list.html',
+                          master=user,
+                          reviews=reviews,
+                          distribution=distribution,
+                          avg=avg)
 
 
 with app.app_context():
