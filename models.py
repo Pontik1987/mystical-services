@@ -354,7 +354,7 @@ class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     client_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     master_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    service_id = db.Column(db.Integer, db.ForeignKey('service.id'), nullable=False)
+    service_id = db.Column(db.Integer, db.ForeignKey('service.id', ondelete='CASCADE'), nullable=False)
     date = db.Column(db.String(20), nullable=False)
     time = db.Column(db.String(10), nullable=False)
     comment = db.Column(db.String(500), nullable=True)
@@ -363,7 +363,7 @@ class Booking(db.Model):
 
     client = db.relationship('User', foreign_keys=[client_id], backref='bookings_made')
     master = db.relationship('User', foreign_keys=[master_id], backref='bookings_received')
-    service = db.relationship('Service', backref='bookings')
+    service = db.relationship('Service', backref=db.backref('bookings', cascade='all, delete-orphan'))
 
 class Portfolio(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -380,11 +380,25 @@ class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     client_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     master_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=False, unique=True)
+    booking_id = db.Column(db.Integer, db.ForeignKey('booking.id', ondelete='CASCADE'), nullable=False, unique=True)
     rating = db.Column(db.Integer, default=5)
     text = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     client = db.relationship('User', foreign_keys=[client_id], backref='reviews_made')
     master = db.relationship('User', foreign_keys=[master_id], backref='reviews_received')
-    booking = db.relationship('Booking', backref='review')
+    booking = db.relationship('Booking', backref=db.backref('review', uselist=False, cascade='all, delete-orphan'))
+
+class Schedule(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    day_of_week = db.Column(db.Integer, nullable=False)  # 0=Пн, 6=Вс
+    start_time = db.Column(db.String(5), nullable=False)  # "10:00"
+    end_time = db.Column(db.String(5), nullable=False)    # "20:00"
+    slot_minutes = db.Column(db.Integer, default=60)      # шаг слота
+    is_active = db.Column(db.Boolean, default=True)
+    order_index = db.Column(db.Integer, default=0)        # порядок интервала в дне
+
+    # Убираем UniqueConstraint — теперь на один день может быть несколько интервалов
+
+    user = db.relationship('User', backref='schedules')

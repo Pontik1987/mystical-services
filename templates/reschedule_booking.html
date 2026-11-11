@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Перенести запись — Mystical Services</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <a href="{{ url_for('index') }}" class="logo">Mystical Services</a>
+        <div class="user-info">
+            <a href="{{ url_for('profile', username=session.username) }}" class="user-link">← В профиль</a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Тема">🌙</button>
+            <a href="{{ url_for('logout') }}" class="btn-logout">Выйти</a>
+        </div>
+    </header>
+
+    <main class="feed-container">
+        <div class="edit-card">
+            <h2>🔄 Перенести запись</h2>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for msg in messages %}
+                        <div class="flash">{{ msg }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="booking-service-info">
+                <div class="service-category" style="font-size:32px;">📅</div>
+                <div>
+                    <div style="font-weight:700;font-size:16px;color:#7c3aed;">
+                        {% if booking.service %}{{ booking.service.name }}{% else %}Услуга{% endif %}
+                    </div>
+                    <div style="font-size:13px;color:#666;">
+                        Клиент: <a href="{{ url_for('profile', username=booking.client.username) }}" style="color:#7c3aed;">@{{ booking.client.username }}</a>
+                    </div>
+                    <div style="font-size:13px;color:#666;">
+                        Текущее время: <strong>{{ booking.date }} в {{ booking.time }}</strong>
+                    </div>
+                    {% if booking.comment %}
+                        <div style="font-size:13px;color:#666;margin-top:4px;">
+                            💬 {{ booking.comment }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <form method="POST" id="reschedule-form">
+                <label class="form-label">Выбери новую дату и время *</label>
+
+                <div class="slots-calendar">
+                    {% for day in calendar %}
+                        <div class="slot-day {% if not day.is_working %}slot-day-off{% endif %}">
+                            <div class="slot-day-header">
+                                <div class="slot-day-name">{{ day.day_name }}</div>
+                                <div class="slot-day-date">{{ day.display }}</div>
+                            </div>
+
+                            {% if day.is_working and day.slots %}
+                                <div class="slot-list">
+                                    {% for slot in day.slots %}
+                                        <button type="button"
+                                                class="slot-btn {% if slot.is_booked %}slot-booked{% endif %}"
+                                                data-date="{{ day.date }}"
+                                                data-time="{{ slot.time }}"
+                                                title="{% if slot.is_booked %}Занято: {{ slot.booked_service }}{% else %}Свободно{% endif %}"
+                                                {% if slot.is_booked %}disabled{% endif %}
+                                                onclick="selectSlot(this, '{{ day.date }}', '{{ slot.time }}', '{{ day.display }}')">
+                                            {{ slot.time }}
+                                            {% if slot.is_booked and slot.booked_service %}
+                                                <span class="slot-booked-name">{{ slot.booked_service[:12] }}{% if slot.booked_service|length > 12 %}...{% endif %}</span>
+                                            {% endif %}
+                                        </button>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="slot-empty">Выходной</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <input type="hidden" name="date" id="selected-date">
+                <input type="hidden" name="time" id="selected-time">
+
+                <div id="selected-info" class="selected-slot-info" style="display:none;">
+                    ✅ Новое время: <strong id="selected-display"></strong>
+                </div>
+
+                <div class="edit-actions">
+                    <button type="submit" class="btn-primary" id="submit-btn" disabled>🔄 Перенести</button>
+                    <a href="{{ url_for('profile', username=session.username) }}" class="btn-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+    function selectSlot(btn, date, time, display) {
+        document.querySelectorAll('.slot-btn').forEach(function(b) { b.classList.remove('slot-selected'); });
+        btn.classList.add('slot-selected');
+
+        document.getElementById('selected-date').value = date;
+        document.getElementById('selected-time').value = time;
+        document.getElementById('selected-display').textContent = display + ' в ' + time;
+        document.getElementById('selected-info').style.display = 'block';
+        document.getElementById('submit-btn').disabled = false;
+    }
+    </script>
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</body>
+</html>

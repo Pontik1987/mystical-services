@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Расписание — Mystical Services</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <a href="{{ url_for('index') }}" class="logo">Mystical Services</a>
+        <div class="user-info">
+            <a href="{{ url_for('profile', username=session.username) }}" class="user-link">← В профиль</a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Тема">🌙</button>
+            <a href="{{ url_for('logout') }}" class="btn-logout">Выйти</a>
+        </div>
+    </header>
+
+    <main class="feed-container">
+        <div class="edit-card">
+            <h2>📅 Настройка расписания</h2>
+            <p class="form-hint" style="margin-bottom:16px;">
+                Добавляй <strong>интервалы</strong> — можно несколько на день. Например: утро 30 мин, день 60 мин, вечер 90 мин.
+            </p>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for msg in messages %}
+                        <div class="flash">{{ msg }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" id="schedule-form">
+                {% set day_names = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'] %}
+
+                {% for dow in range(7) %}
+                    {% set intervals = grouped_schedules.get(dow, []) %}
+
+                    <div class="schedule-day">
+                        <label class="schedule-day-header">
+                            <input type="checkbox" name="day_{{ dow }}_active" {% if intervals %}checked{% endif %} onchange="toggleDay({{ dow }}, this.checked)">
+                            <span class="schedule-day-name">{{ day_names[dow] }}</span>
+                        </label>
+
+                        <div class="schedule-day-body" id="day-{{ dow }}-body" {% if not intervals %}style="display:none;"{% endif %}>
+                            <div id="day-{{ dow }}-intervals">
+                                {% if intervals %}
+                                    {% for interval in intervals %}
+                                        <div class="interval-row">
+                                            <input type="time" name="day_{{ dow }}_start[]" value="{{ interval.start_time }}" class="form-input schedule-time">
+                                            <span class="interval-sep">—</span>
+                                            <input type="time" name="day_{{ dow }}_end[]" value="{{ interval.end_time }}" class="form-input schedule-time">
+                                            <select name="day_{{ dow }}_step[]" class="form-input schedule-time">
+                                                <option value="15" {% if interval.slot_minutes == 15 %}selected{% endif %}>15 мин</option>
+                                                <option value="30" {% if interval.slot_minutes == 30 %}selected{% endif %}>30 мин</option>
+                                                <option value="45" {% if interval.slot_minutes == 45 %}selected{% endif %}>45 мин</option>
+                                                <option value="60" {% if interval.slot_minutes == 60 %}selected{% endif %}>60 мин</option>
+                                                <option value="90" {% if interval.slot_minutes == 90 %}selected{% endif %}>90 мин</option>
+                                                <option value="120" {% if interval.slot_minutes == 120 %}selected{% endif %}>120 мин</option>
+                                            </select>
+                                            <button type="button" class="interval-remove" onclick="removeInterval(this)">×</button>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="interval-row">
+                                        <input type="time" name="day_{{ dow }}_start[]" value="10:00" class="form-input schedule-time">
+                                        <span class="interval-sep">—</span>
+                                        <input type="time" name="day_{{ dow }}_end[]" value="20:00" class="form-input schedule-time">
+                                        <select name="day_{{ dow }}_step[]" class="form-input schedule-time">
+                                            <option value="15">15 мин</option>
+                                            <option value="30">30 мин</option>
+                                            <option value="45">45 мин</option>
+                                            <option value="60" selected>60 мин</option>
+                                            <option value="90">90 мин</option>
+                                            <option value="120">120 мин</option>
+                                        </select>
+                                        <button type="button" class="interval-remove" onclick="removeInterval(this)">×</button>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <button type="button" class="interval-add" onclick="addInterval({{ dow }})">+ Добавить интервал</button>
+                        </div>
+                    </div>
+                {% endfor %}
+
+                <div class="edit-actions">
+                    <button type="submit" class="btn-primary">💾 Сохранить расписание</button>
+                    <a href="{{ url_for('profile', username=session.username) }}" class="btn-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+    function toggleDay(dow, show) {
+        document.getElementById('day-' + dow + '-body').style.display = show ? 'block' : 'none';
+    }
+
+    function addInterval(dow) {
+        var container = document.getElementById('day-' + dow + '-intervals');
+        var newRow = document.createElement('div');
+        newRow.className = 'interval-row';
+        newRow.innerHTML = `
+            <input type="time" name="day_${dow}_start[]" value="10:00" class="form-input schedule-time">
+            <span class="interval-sep">—</span>
+            <input type="time" name="day_${dow}_end[]" value="20:00" class="form-input schedule-time">
+            <select name="day_${dow}_step[]" class="form-input schedule-time">
+                <option value="15">15 мин</option>
+                <option value="30">30 мин</option>
+                <option value="45">45 мин</option>
+                <option value="60" selected>60 мин</option>
+                <option value="90">90 мин</option>
+                <option value="120">120 мин</option>
+            </select>
+            <button type="button" class="interval-remove" onclick="removeInterval(this)">×</button>
+        `;
+        container.appendChild(newRow);
+    }
+
+    function removeInterval(btn) {
+        var row = btn.closest('.interval-row');
+        var container = row.parentElement;
+        if (container.children.length > 1) {
+            row.remove();
+        } else {
+            alert('Должен быть хотя бы один интервал');
+        }
+    }
+    </script>
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</body>
+</html>

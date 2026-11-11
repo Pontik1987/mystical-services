@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from models import db, User, Post, Like, Comment, Follow, Bookmark, Notification, Message, Repost, Poll, PollOption, PollVote, Block, Report, PinnedChat, GroupChat, GroupMember, GroupMessage, Story, StoryView, Clip, ClipLike, ClipComment, Donation, Service, Booking, Portfolio, Review
+from models import db, User, Post, Like, Comment, Follow, Bookmark, Notification, Message, Repost, Poll, PollOption, PollVote, Block, Report, PinnedChat, GroupChat, GroupMember, GroupMessage, Story, StoryView, Clip, ClipLike, ClipComment, Donation, Service, Booking, Portfolio, Review, Schedule
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from markupsafe import Markup, escape
@@ -39,6 +39,112 @@ os.makedirs(AVATAR_FOLDER, exist_ok=True)
 db.init_app(app)
 
 TAG_REGEX = re.compile(r'#([a-zA-Zа-яА-Я0-9_]{1,50})')
+
+
+def get_slots(master_id, days_ahead=7, service_duration=60):
+    """Генерирует слоты для мастера на N дней вперёд.
+    Шаг = service_duration (длительность услуги).
+    Занятые слоты содержат название услуги.
+    """
+    from datetime import datetime as dt, timedelta as td
+
+    # Расписание мастера — группируем по дням (несколько интервалов на день)
+    all_scheds = Schedule.query.filter_by(user_id=master_id, is_active=True).order_by(Schedule.order_index).all()
+    schedules = {}
+    for s in all_scheds:
+        if s.day_of_week not in schedules:
+            schedules[s.day_of_week] = []
+        schedules[s.day_of_week].append(s)
+
+    # Занятые записи (pending + confirmed)
+    bookings = Booking.query.filter(
+        Booking.master_id == master_id,
+        Booking.status.in_(['pending', 'confirmed'])
+    ).all()
+
+    # Собираем "занятое" время для каждого дня
+    # booked_map: {date: [(start_min, end_min, service_name), ...]}
+    booked_map = {}
+    for b in bookings:
+        try:
+            bh, bm = map(int, b.time.split(':'))
+            b_start = bh * 60 + bm
+            b_end = b_start + (b.service.duration if b.service else 60)
+
+            if b.date not in booked_map:
+                booked_map[b.date] = []
+            booked_map[b.date].append((b_start, b_end, b.service.name if b.service else 'Услуга'))
+        except:
+            continue
+
+    result = []
+    today = dt.utcnow().date()
+
+    # Шаг = длительность услуги (минимум 15)
+    step = max(15, service_duration)
+
+    for i in range(days_ahead):
+        day = today + td(days=i)
+        dow = day.weekday()
+
+        day_data = {
+            'date': day.strftime('%Y-%m-%d'),
+            'display': day.strftime('%d.%m'),
+            'day_name': ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][dow],
+            'slots': [],
+            'is_working': False
+        }
+
+        if dow in schedules:
+            day_data['is_working'] = True
+
+            # Обрабатываем все интервалы дня
+            for sched in schedules[dow]:
+                start_h, start_m = map(int, sched.start_time.split(':'))
+                end_h, end_m = map(int, sched.end_time.split(':'))
+                sched_start = start_h * 60 + start_m
+                sched_end = end_h * 60 + end_m
+
+                cur_minutes = sched_start
+
+                while cur_minutes + step <= sched_end:
+                    h = cur_minutes // 60
+                    m = cur_minutes % 60
+                    time_str = f"{h:02d}:{m:02d}"
+
+                    # Проверяем, нет ли уже такого слота (пересечение интервалов)
+                    already_exists = any(s['time'] == time_str for s in day_data['slots'])
+                    if already_exists:
+                        cur_minutes += step
+                        continue
+
+                    # Проверяем пересечение с занятыми
+                    slot_start = cur_minutes
+                    slot_end = cur_minutes + step
+
+                    is_booked = False
+                    booked_service = None
+
+                    for b_start, b_end, b_name in booked_map.get(day_data['date'], []):
+                        if slot_start < b_end and b_start < slot_end:
+                            is_booked = True
+                            booked_service = b_name
+                            break
+
+                    day_data['slots'].append({
+                        'time': time_str,
+                        'is_booked': is_booked,
+                        'booked_service': booked_service
+                    })
+
+                    cur_minutes += step
+
+            # Сортируем слоты по времени
+            day_data['slots'].sort(key=lambda s: s['time'])
+
+        result.append(day_data)
+
+    return result
 
 
 def allowed_file(filename):
@@ -218,7 +324,8 @@ def inject_user():
                 is_admin=is_admin, has_reported_post=has_reported_post,
                 is_chat_pinned=is_chat_pinned, accent_class=accent_class,
                 can_view_profile=can_view_profile, can_message=can_message,
-                avg_rating=avg_rating, reviews_count=reviews_count)
+                avg_rating=avg_rating, reviews_count=reviews_count,
+                get_slots=get_slots)
 
 
 @app.route('/')
@@ -2583,6 +2690,162 @@ def reviews_list(username):
                           reviews=reviews,
                           distribution=distribution,
                           avg=avg)
+
+
+@app.route('/schedule/setup', methods=['GET', 'POST'])
+def schedule_setup():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+
+    if request.method == 'POST':
+        # Очищаем старое расписание
+        Schedule.query.filter_by(user_id=user.id).delete()
+
+        for dow in range(7):
+            is_active = request.form.get(f'day_{dow}_active') == 'on'
+            if not is_active:
+                continue
+
+            starts = request.form.getlist(f'day_{dow}_start[]')
+            ends = request.form.getlist(f'day_{dow}_end[]')
+            steps = request.form.getlist(f'day_{dow}_step[]')
+
+            for idx, (start, end, step_str) in enumerate(zip(starts, ends, steps)):
+                try:
+                    step = int(step_str)
+                except:
+                    step = 60
+
+                # Валидация
+                try:
+                    sh, sm = map(int, start.split(':'))
+                    eh, em = map(int, end.split(':'))
+                    if sh * 60 + sm >= eh * 60 + em:
+                        continue
+                except:
+                    continue
+
+                if step not in [15, 30, 45, 60, 90, 120]:
+                    step = 60
+
+                sched = Schedule(
+                    user_id=user.id,
+                    day_of_week=dow,
+                    start_time=start,
+                    end_time=end,
+                    slot_minutes=step,
+                    is_active=True,
+                    order_index=idx
+                )
+                db.session.add(sched)
+
+        db.session.commit()
+        flash('Расписание сохранено!')
+        return redirect(url_for('profile', username=user.username))
+
+    # Загружаем текущее расписание и группируем по дням
+    all_schedules = Schedule.query.filter_by(user_id=user.id).order_by(Schedule.order_index).all()
+
+    grouped_schedules = {}
+    for s in all_schedules:
+        if s.day_of_week not in grouped_schedules:
+            grouped_schedules[s.day_of_week] = []
+        grouped_schedules[s.day_of_week].append(s)
+
+    return render_template('schedule_setup.html', user=user, grouped_schedules=grouped_schedules)
+
+
+@app.route('/booking/<int:booking_id>/complete', methods=['POST'])
+def complete_booking(booking_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    booking = Booking.query.get_or_404(booking_id)
+
+    if booking.master_id != session['user_id']:
+        flash('Это не твоя запись')
+        return redirect(url_for('profile', username=session['username']))
+
+    if booking.status != 'confirmed':
+        flash('Можно отметить только подтверждённую запись')
+        return redirect(url_for('profile', username=session['username']))
+
+    booking.status = 'completed'
+    db.session.commit()
+
+    # Уведомление клиенту
+    notif = Notification(
+        user_id=booking.client_id,
+        actor_id=session['user_id'],
+        type='booking_completed'
+    )
+    db.session.add(notif)
+    db.session.commit()
+
+    flash('Запись отмечена как выполненная')
+    return redirect(url_for('profile', username=session['username']))
+
+
+@app.route('/booking/<int:booking_id>/reschedule', methods=['GET', 'POST'])
+def reschedule_booking(booking_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    booking = Booking.query.get_or_404(booking_id)
+
+    if booking.master_id != session['user_id']:
+        flash('Это не твоя запись')
+        return redirect(url_for('profile', username=session['username']))
+
+    if booking.status not in ['pending', 'confirmed']:
+        flash('Нельзя перенести эту запись')
+        return redirect(url_for('profile', username=session['username']))
+
+    if request.method == 'POST':
+        new_date = request.form.get('date', '').strip()
+        new_time = request.form.get('time', '').strip()
+
+        if not new_date or not new_time:
+            flash('Выбери новую дату и время')
+            return redirect(url_for('reschedule_booking', booking_id=booking.id))
+
+        # Проверяем, что новый слот свободен
+        existing = Booking.query.filter(
+            Booking.master_id == booking.master_id,
+            Booking.date == new_date,
+            Booking.time == new_time,
+            Booking.status.in_(['pending', 'confirmed']),
+            Booking.id != booking.id
+        ).first()
+
+        if existing:
+            flash('Этот слот уже занят')
+            return redirect(url_for('reschedule_booking', booking_id=booking.id))
+
+        old_info = f"{booking.date} в {booking.time}"
+
+        booking.date = new_date[:20]
+        booking.time = new_time[:10]
+        db.session.commit()
+
+        # Уведомление клиенту
+        notif = Notification(
+            user_id=booking.client_id,
+            actor_id=session['user_id'],
+            type='booking_rescheduled'
+        )
+        db.session.add(notif)
+        db.session.commit()
+
+        flash(f'Запись перенесена с {old_info} на {new_date} в {new_time}')
+        return redirect(url_for('profile', username=session['username']))
+
+    # Показываем свободные слоты (кроме текущей записи)
+    calendar = get_slots(booking.master_id, 14, booking.service.duration if booking.service else 60)
+
+    return render_template('reschedule_booking.html', booking=booking, calendar=calendar)
 
 
 with app.app_context():

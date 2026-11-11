@@ -44,22 +44,78 @@
                 </div>
             </div>
 
-            <form method="POST">
-                <label class="form-label">Дата *</label>
-                <input type="date" name="date" class="form-input" required value="{{ tomorrow }}" min="{{ tomorrow }}">
+            {% set calendar = generate_slots(master.id, 7, service.duration) %}
 
-                <label class="form-label">Время *</label>
-                <input type="time" name="time" class="form-input" required value="10:00">
-
-                <label class="form-label">Комментарий (необязательно)</label>
-                <textarea name="comment" id="booking-comment" class="form-textarea" maxlength="500" placeholder="Пожелания, вопросы..."></textarea>
-                <button type="button" class="emoji-trigger" data-target="booking-comment" title="Эмодзи" style="margin-top:6px;">😀 Эмодзи</button>
-
-                <div class="edit-actions">
-                    <button type="submit" class="btn-primary">📅 Записаться</button>
-                    <a href="{{ url_for('profile', username=master.username) }}" class="btn-secondary">Отмена</a>
+            {% if not calendar|selectattr('is_working')|list %}
+                <div class="flash" style="background:#fee2e2;color:#991b1b;">
+                    ⚠️ Мастер ещё не настроил расписание. Напишите ему в ЛС.
                 </div>
-            </form>
+            {% else %}
+                <form method="POST" id="booking-form">
+                    <label class="form-label">Выбери дату и время *</label>
+
+                    <div class="slots-calendar">
+                        {% for day in calendar %}
+                            <div class="slot-day {% if not day.is_working %}slot-day-off{% endif %}">
+                                <div class="slot-day-header">
+                                    <div class="slot-day-name">{{ day.day_name }}</div>
+                                    <div class="slot-day-date">{{ day.display }}</div>
+                                </div>
+
+                                {% if day.is_working and day.slots %}
+                                    <div class="slot-list">
+                                        {% for slot in day.slots %}
+                                            <button type="button"
+                                                    class="slot-btn {% if slot.is_booked %}slot-booked{% endif %}"
+                                                    data-date="{{ day.date }}"
+                                                    data-time="{{ slot.time }}"
+                                                    title="{% if slot.is_booked %}Занято: {{ slot.booked_service }}{% else %}Свободно{% endif %}"
+                                                    {% if slot.is_booked %}disabled{% endif %}
+                                                    onclick="selectSlot(this, '{{ day.date }}', '{{ slot.time }}', '{{ day.display }}')">
+                                                {{ slot.time }}
+                                                {% if slot.is_booked and slot.booked_service %}
+                                                    <span class="slot-booked-name">{{ slot.booked_service[:12] }}{% if slot.booked_service|length > 12 %}...{% endif %}</span>
+                                                {% endif %}
+                                            </button>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="slot-empty">Выходной</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <input type="hidden" name="date" id="selected-date">
+                    <input type="hidden" name="time" id="selected-time">
+
+                    <div id="selected-info" class="selected-slot-info" style="display:none;">
+                        ✅ Выбрано: <strong id="selected-display"></strong>
+                    </div>
+
+                    <label class="form-label" style="margin-top:16px;">Комментарий (необязательно)</label>
+                    <textarea name="comment" id="booking-comment" class="form-textarea" maxlength="500" placeholder="Пожелания, вопросы..."></textarea>
+                    <button type="button" class="emoji-trigger" data-target="booking-comment" title="Эмодзи" style="margin-top:6px;">😀 Эмодзи</button>
+
+                    <div class="edit-actions">
+                        <button type="submit" class="btn-primary" id="submit-btn" disabled>📅 Записаться</button>
+                        <a href="{{ url_for('profile', username=master.username) }}" class="btn-secondary">Отмена</a>
+                    </div>
+                </form>
+            {% endif %}
+
+            <script>
+            function selectSlot(btn, date, time, display) {
+                document.querySelectorAll('.slot-btn').forEach(function(b) { b.classList.remove('slot-selected'); });
+                btn.classList.add('slot-selected');
+
+                document.getElementById('selected-date').value = date;
+                document.getElementById('selected-time').value = time;
+                document.getElementById('selected-display').textContent = display + ' в ' + time;
+                document.getElementById('selected-info').style.display = 'block';
+                document.getElementById('submit-btn').disabled = false;
+            }
+            </script>
         </div>
     </main>
 
