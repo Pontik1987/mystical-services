@@ -970,6 +970,7 @@ def super_like(post_id):
         db.session.commit()
 
         flash(f'🔥 Супер-реакция отправлена! −1 ⭐')
+
         return redirect(request.form.get('next') or url_for('index'))
 
 
@@ -2846,6 +2847,138 @@ def reschedule_booking(booking_id):
     calendar = get_slots(booking.master_id, 14, booking.service.duration if booking.service else 60)
 
     return render_template('reschedule_booking.html', booking=booking, calendar=calendar)
+
+
+@app.route('/api/like/<int:post_id>', methods=['POST'])
+def api_like(post_id):
+    if 'user_id' not in session:
+        return {'error': 'unauthorized'}, 401
+
+    post = Post.query.get_or_404(post_id)
+    reaction = request.form.get('reaction', 'like')
+
+    existing = Like.query.filter_by(user_id=session['user_id'], post_id=post.id).first()
+
+    if existing:
+        if existing.reaction == reaction:
+            db.session.delete(existing)
+            is_liked = False
+        else:
+            existing.reaction = reaction
+            is_liked = True
+    else:
+        db.session.add(Like(user_id=session['user_id'], post_id=post.id, reaction=reaction))
+        is_liked = True
+
+    db.session.commit()
+
+    return {
+        'success': True,
+        'is_liked': is_liked,
+        'reaction': reaction,
+        'count': Like.query.filter_by(post_id=post.id, reaction=reaction).count(),
+        'total': Like.query.filter_by(post_id=post.id).count()
+    }
+
+
+@app.route('/api/super_like/<int:post_id>', methods=['POST'])
+def api_super_like(post_id):
+    if 'user_id' not in session:
+        return {'error': 'unauthorized'}, 401
+
+    post = Post.query.get_or_404(post_id)
+
+    if post.user_id == session['user_id']:
+        return {'error': 'Нельзя на свой пост'}, 400
+
+    user = User.query.get(session['user_id'])
+    if (user.stars or 0) < 1:
+        return {'error': 'Недостаточно ⭐'}, 400
+
+    reaction = request.form.get('reaction', 'super_star')
+    existing = Like.query.filter_by(user_id=session['user_id'], post_id=post.id).first()
+
+    if existing:
+        if existing.is_super and existing.reaction == reaction:
+            user.stars = (user.stars or 0) + 1
+            author = User.query.get(post.user_id)
+            if author:
+                author.stars = max(0, (author.stars or 0) - 1)
+            db.session.delete(existing)
+            db.session.commit()
+            return {'success': True, 'is_super': False, 'stars': user.stars, 'message': 'Супер-реакция отменена'}
+        else:
+            if not existing.is_super:
+                user.stars = (user.stars or 0) - 1
+                author = User.query.get(post.user_id)
+                if author:
+                    author.stars = (author.stars or 0) + 1
+            existing.reaction = reaction
+            existing.is_super = True
+    else:
+        user.stars = (user.stars or 0) - 1
+        author = User.query.get(post.user_id)
+        if author:
+            author.stars = (author.stars or 0) + 1
+        db.session.add(Like(user_id=session['user_id'], post_id=post.id, reaction=reaction, is_super=True))
+
+    db.session.commit()
+
+    return {
+        'success': True,
+        'is_super': True,
+        'reaction': reaction,
+        'stars': user.stars,
+        'message': '🔥 Супер-реакция! −1 ⭐'
+    }
+
+
+@app.route('/api/bookmark/<int:post_id>', methods=['POST'])
+def api_bookmark(post_id):
+    if 'user_id' not in session:
+        return {'error': 'unauthorized'}, 401
+
+    post = Post.query.get_or_404(post_id)
+    existing = Bookmark.query.filter_by(user_id=session['user_id'], post_id=post.id).first()
+
+    if existing:
+        db.session.delete(existing)
+        is_bookmarked = False
+    else:
+        db.session.add(Bookmark(user_id=session['user_id'], post_id=post.id))
+        is_bookmarked = True
+
+    db.session.commit()
+
+    return {'success': True, 'is_bookmarked': is_bookmarked}
+
+
+@app.route('/api/repost/<int:post_id>', methods=['POST'])
+def api_repost(post_id):
+    if 'user_id' not in session:
+        return {'error': 'unauthorized'}, 401
+
+    post = Post.query.get_or_404(post_id)
+
+    if post.user_id == session['user_id']:
+        return {'error': 'Нельзя репостить свой пост'}, 400
+
+    existing = Repost.query.filter_by(user_id=session['user_id'], post_id=post.id).first()
+
+    if existing:
+        db.session.delete(existing)
+        is_reposted = False
+    else:
+        db.session.add(Repost(user_id=session['user_id'], post_id=post.id))
+        is_reposted = True
+
+    db.session.commit()
+
+    return {
+        'success': True,
+        'is_reposted': is_reposted,
+        'count': Repost.query.filter_by(post_id=post.id).count()
+    }
 
 
 with app.app_context():
