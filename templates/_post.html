@@ -11,6 +11,26 @@
     </div>
     <div class="post-content font-{{ post.font_style or 'sans' }}">{{ post.content|linkify }}</div>
 
+    {% if post.images %}
+        <div class="post-gallery">
+            {% for img in post.images|sort(attribute='order_index') %}
+                <div class="post-gallery-item">
+                    <img src="{{ url_for('static', filename='posts/' + img.image) }}" 
+                         alt="Фото" 
+                         class="post-gallery-img"
+                         onclick="openLightbox(this.src)">
+                    {% if post.user_id == session.user_id %}
+                        <form method="POST" action="{{ url_for('delete_post_image', image_id=img.id) }}" 
+                              class="gallery-delete" onsubmit="return confirm('Удалить фото?');">
+                            <input type="hidden" name="next" value="{{ next_url }}">
+                            <button type="submit">×</button>
+                        </form>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     {% if post.video %}
         <div class="post-video">
             <video controls preload="metadata" class="post-video-player">

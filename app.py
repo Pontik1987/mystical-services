@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from models import db, User, Post, Like, Comment, Follow, Bookmark, Notification, Message, Repost, Poll, PollOption, PollVote, Block, Report, PinnedChat, GroupChat, GroupMember, GroupMessage, Story, StoryView, Clip, ClipLike, ClipComment, Donation, Service, Booking, Portfolio, Review, Schedule
+from models import db, User, Post, Like, Comment, Follow, Bookmark, Notification, Message, Repost, Poll, PollOption, PollVote, Block, Report, PinnedChat, GroupChat, GroupMember, GroupMessage, Story, StoryView, Clip, ClipLike, ClipComment, Donation, Service, Booking, Portfolio, Review, Schedule, PostImage
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from markupsafe import Markup, escape
@@ -27,6 +27,8 @@ os.makedirs(FILES_FOLDER, exist_ok=True)
 CLIPS_FOLDER = os.path.join(basedir, 'static', 'clips')
 os.makedirs(CLIPS_FOLDER, exist_ok=True)
 PORTFOLIO_FOLDER = os.path.join(basedir, 'static', 'portfolio')
+POST_IMAGES_FOLDER = os.path.join(basedir, 'static', 'posts')
+os.makedirs(POST_IMAGES_FOLDER, exist_ok=True)
 os.makedirs(PORTFOLIO_FOLDER, exist_ok=True)
 AUDIO_FOLDER = os.path.join(basedir, 'static', 'audio')
 os.makedirs(AUDIO_FOLDER, exist_ok=True)
@@ -558,6 +560,25 @@ def create_post():
                 flash('Видео: только mp4, webm, mov')
                 return redirect(url_for('index'))
 
+        # Обработка фото (до 4)
+        db.session.add(post)
+        db.session.flush()  # ← ВАЖНО: получаем post.id ДО фото
+
+        photos = request.files.getlist('photos')
+        for idx, photo in enumerate(photos):
+            if idx >= 4:
+                break
+            if photo and photo.filename and allowed_file(photo.filename):
+                photo.seek(0, 2)
+                size = photo.tell()
+                photo.seek(0)
+                if size > 5 * 1024 * 1024:
+                    continue
+                ext = photo.filename.rsplit('.', 1)[1].lower()
+                img_filename = f"post_{session['user_id']}_{int(datetime.utcnow().timestamp())}_{idx}.{ext}"
+                photo.save(os.path.join(POST_IMAGES_FOLDER, img_filename))
+                db.session.add(PostImage(image=img_filename, post_id=post.id, order_index=idx))
+
         # Обработка файла
         doc_file = request.files.get('attachment')
         if doc_file and doc_file.filename:
@@ -580,9 +601,6 @@ def create_post():
             else:
                 flash('Файл: pdf, doc, docx, txt, zip, rar, xls, ppt, csv')
                 return redirect(url_for('index'))
-
-        db.session.add(post)
-        db.session.flush()  # получаем post.id
 
         # Обработка опроса
         poll_question = request.form.get('poll_question', '').strip()
@@ -1566,6 +1584,27 @@ def single_post(post_id):
     return render_template('post.html', post=post)
 
 
+
+
+@app.route('/post_image/<int:image_id>/delete', methods=['POST'])
+def delete_post_image(image_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    img = PostImage.query.get_or_404(image_id)
+    if img.post.user_id != session['user_id']:
+        flash('Это не твоё фото')
+        return redirect(url_for('index'))
+
+    filepath = os.path.join(POST_IMAGES_FOLDER, img.image)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+
+    db.session.delete(img)
+    db.session.commit()
+
+    flash('Фото удалено')
+    return redirect(request.form.get('next') or url_for('index'))
 
 
 @app.route('/edit_post/<int:post_id>', methods=['GET', 'POST'])

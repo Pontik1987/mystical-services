@@ -93,6 +93,14 @@
 
                 <div class="video-upload">
                     <label class="video-label">
+                        📸 Добавить фото (до 4)
+                        <input type="file" name="photos" id="photos-input" accept="image/*" multiple style="display:none;">
+                    </label>
+                    <span class="video-filename" id="photos-filename"></span>
+                </div>
+
+                <div class="video-upload">
+                    <label class="video-label">
                         🎬 Добавить видео
                         <input type="file" name="video" id="video-input" accept="video/mp4,video/webm,video/quicktime" style="display:none;">
                     </label>
@@ -208,5 +216,23 @@ document.addEventListener('submit', function(e) {
 });
 </script>
     <script src="{{ url_for('static', filename='pwa.js') }}"></script>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <img src="" alt="Просмотр" class="lightbox-img" id="lightbox-img">
+</div>
+<script>
+function openLightbox(src) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').classList.add('active');
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLightbox();
+});
+</script>
+
 </body>
 </html>

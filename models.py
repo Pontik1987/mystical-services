@@ -402,3 +402,12 @@ class Schedule(db.Model):
     # Убираем UniqueConstraint — теперь на один день может быть несколько интервалов
 
     user = db.relationship('User', backref='schedules')
+
+class PostImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    image = db.Column(db.String(200), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+    order_index = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    post = db.relationship('Post', backref='images')
