@@ -18,3 +18,6 @@ static/audio/
 
 # Пользовательские загрузки портфолио
 static/portfolio/
+
+# Пользовательские фото постов
+static/posts/
